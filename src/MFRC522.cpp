@@ -164,10 +164,10 @@ MFRC522::StatusCode MFRC522::PCD_CalculateCRC(	byte *data,		///< In: Pointer to 
 	PCD_WriteRegister(CommandReg, PCD_CalcCRC);		// Start the calculation
 	
 	// Wait for the CRC calculation to complete. Each iteration of the while-loop takes 17.73μs.
-	// TODO check/modify for other architectures than Arduino Uno 16bit
+	// TODO check/modify for other architectures than Arduino Uno 16bit --> using millis() should solve the problem
 
-	// Wait for the CRC calculation to complete. Each iteration of the while-loop takes 17.73us.
-	for (uint16_t i = 5000; i > 0; i--) {
+    const uint32_t timeout = (uint32_t) millis() + 89;
+    while (millis () <= timeout){
 		// DivIrqReg[7..0] bits are: Set2 reserved reserved MfinActIRq reserved CRCIRq reserved reserved
 		byte n = PCD_ReadRegister(DivIrqReg);
 		if (n & 0x04) {									// CRCIRq bit set - calculation done
@@ -480,19 +480,23 @@ MFRC522::StatusCode MFRC522::PCD_CommunicateWithPICC(	byte command,		///< The co
 	// Wait for the command to complete.
 	// In PCD_Init() we set the TAuto flag in TModeReg. This means the timer automatically starts when the PCD stops transmitting.
 	// Each iteration of the do-while-loop takes 17.86μs.
-	// TODO check/modify for other architectures than Arduino Uno 16bit
-	uint16_t i;
-	for (i = 2000; i > 0; i--) {
+	// TODO check/modify for other architectures than Arduino Uno 16bit --> using millis() should solve the problem
+    
+    const uint32_t timeout = (uint32_t) millis() + 36;
+    bool TimeoutFlag = true;
+    while (millis () <= timeout){
 		byte n = PCD_ReadRegister(ComIrqReg);	// ComIrqReg[7..0] bits are: Set1 TxIRq RxIRq IdleIRq HiAlertIRq LoAlertIRq ErrIRq TimerIRq
 		if (n & waitIRq) {					// One of the interrupts that signal success has been set.
+            TimeoutFlag = false;
 			break;
 		}
 		if (n & 0x01) {						// Timer interrupt - nothing received in 25ms
+            TimeoutFlag = false;
 			return STATUS_TIMEOUT;
 		}
 	}
 	// 35.7ms and nothing happend. Communication with the MFRC522 might be down.
-	if (i == 0) {
+	if (TimeoutFlag = false;) {
 		return STATUS_TIMEOUT;
 	}
 	
